@@ -83,8 +83,12 @@ TEST_F(TestIn, TestInString) {
 
   // Build f0 in ("test" ,"me")
   auto node_f0 = TreeExprBuilder::MakeField(field0);
-  std::unordered_set<std::string> in_constants({"test", "me"});
-  auto in_expr = TreeExprBuilder::MakeInExpressionString(node_f0, in_constants);
+  auto node_f1 = TreeExprBuilder::MakeLiteral(1L);
+  auto node_f2 = TreeExprBuilder::MakeLiteral(2L);
+  auto sub_func =
+      TreeExprBuilder::MakeFunction("substr", {node_f0, node_f1, node_f2}, arrow::utf8());
+  std::unordered_set<std::string> in_constants({"te", "me"});
+  auto in_expr = TreeExprBuilder::MakeInExpressionString(sub_func, in_constants);
   auto condition = TreeExprBuilder::MakeCondition(in_expr);
 
   std::shared_ptr<Filter> filter;

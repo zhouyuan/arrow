@@ -350,7 +350,7 @@ NodePtr ProtoTypeToOrNode(const types::OrNode& node) {
 }
 
 NodePtr ProtoTypeToInNode(const types::InNode& node) {
-  NodePtr field = ProtoTypeToFieldNode(node.field());
+  NodePtr field = ProtoTypeToNode(node.node());
 
   if (node.has_intvalues()) {
     std::unordered_set<int32_t> int_values;
@@ -522,6 +522,8 @@ Status make_record_batch_with_buf_addrs(SchemaPtr schema, int num_rows,
   auto num_fields = schema->num_fields();
   int buf_idx = 0;
   int sz_idx = 0;
+  std::cout << "num_fields: " << num_fields << std::endl;
+  std::cout << "input_bufs_len: " << in_bufs_len << std::endl;
 
   for (int i = 0; i < num_fields; i++) {
     auto field = schema->field(i);
@@ -558,6 +560,7 @@ Status make_record_batch_with_buf_addrs(SchemaPtr schema, int num_rows,
       buffers.push_back(offsets);
     }
 
+    std::cout << "xxxx: " << buffers.size() << std::endl;
     auto array_data = arrow::ArrayData::Make(field->type(), num_rows, std::move(buffers));
     columns.push_back(array_data);
   }
