@@ -80,6 +80,10 @@ DATE_TYPES(EXTRACT_DECADE)
 
 DATE_TYPES(EXTRACT_YEAR)
 
+FORCE_INLINE gdv_int64 extractYear_date32(gdv_date32 days) \
+  { EpochTimePoint tp(days*24*60*60*1000L);                \
+  return 1900 + tp.TmYear(); }
+
 #define EXTRACT_DOY(TYPE)                            \
   FORCE_INLINE                                       \
   gdv_int64 extractDoy##_##TYPE(gdv_##TYPE millis) { \
@@ -454,6 +458,9 @@ DATE_TRUNC_FUNCTIONS(timestamp)
 FORCE_INLINE
 gdv_date64 castDATE_int64(gdv_int64 in) { return in; }
 
+FORCE_INLINE
+gdv_date32 castDATE_int32(gdv_int32 in) { return in; }
+
 static int days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
 bool IsLastDayOfMonth(const EpochTimePoint& tp) {
@@ -576,6 +583,64 @@ gdv_date64 castDATE_utf8(int64_t context, const char* input, gdv_int32 length) {
   return std::chrono::time_point_cast<std::chrono::milliseconds>(sys_days(date))
       .time_since_epoch()
       .count();
+}
+
+gdv_date32 castDATE32_utf8(int64_t context, const char* input, gdv_int32 length) {
+  using arrow_vendored::date::day;
+  using arrow_vendored::date::month;
+  using arrow_vendored::date::sys_days;
+  using arrow_vendored::date::year;
+  using arrow_vendored::date::year_month_day;
+  using gandiva::TimeFields;
+  // format : 0 is year, 1 is month and 2 is day.
+  int dateFields[3];
+  int dateIndex = 0, index = 0, value = 0;
+  int year_str_len = 0;
+  while (dateIndex < 3 && index < length) {
+    if (!isdigit(input[index])) {
+      dateFields[dateIndex++] = value;
+      value = 0;
+    } else {
+      value = (value * 10) + (input[index] - '0');
+      if (dateIndex == TimeFields::kYear) {
+        year_str_len++;
+      }
+    }
+    index++;
+  }
+
+  if (dateIndex < 3) {
+    // If we reached the end of input, we would have not encountered a separator
+    // store the last value
+    dateFields[dateIndex++] = value;
+  }
+  const char* msg = "Not a valid date value ";
+  if (dateIndex != 3) {
+    set_error_for_date(length, input, msg, context);
+    return 0;
+  }
+
+  /* Handle two digit years
+   * If range of two digits is between 70 - 99 then year = 1970 - 1999
+   * Else if two digits is between 00 - 69 = 2000 - 2069
+   */
+  if (dateFields[TimeFields::kYear] < 100 && year_str_len < 4) {
+    if (dateFields[TimeFields::kYear] < 70) {
+      dateFields[TimeFields::kYear] += 2000;
+    } else {
+      dateFields[TimeFields::kYear] += 1900;
+    }
+  }
+  year_month_day date = year(dateFields[TimeFields::kYear]) /
+                        month(dateFields[TimeFields::kMonth]) /
+                        day(dateFields[TimeFields::kDay]);
+  if (!date.ok()) {
+    set_error_for_date(length, input, msg, context);
+    return 0;
+  }
+  return std::chrono::time_point_cast<std::chrono::hours>(sys_days(date))
+     .time_since_epoch()
+     .count()/24;
 }
 
 /*

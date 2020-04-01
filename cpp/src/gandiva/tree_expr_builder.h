@@ -45,6 +45,8 @@ class GANDIVA_EXPORT TreeExprBuilder {
   static NodePtr MakeLiteral(int64_t value);
   static NodePtr MakeLiteral(float value);
   static NodePtr MakeLiteral(double value);
+  static NodePtr MakeDate32Literal(const int32_t value);
+  static NodePtr MakeDate64Literal(const int64_t value);
   static NodePtr MakeStringLiteral(const std::string& value);
   static NodePtr MakeBinaryLiteral(const std::string& value);
   static NodePtr MakeDecimalLiteral(const DecimalScalar128& value);

@@ -35,6 +35,7 @@ namespace gandiva {
 using arrow::binary;
 using arrow::boolean;
 using arrow::date64;
+using arrow::date32;
 using arrow::day_time_interval;
 using arrow::float32;
 using arrow::float64;
@@ -209,7 +210,7 @@ typedef std::unordered_map<const FunctionSignature*, const NativeFunction*, KeyH
 
 // Iterate the inner macro over all date types
 #define DATE_TYPES(INNER, NAME, ALIASES) \
-  INNER(NAME, ALIASES, date64), INNER(NAME, ALIASES, timestamp)
+  INNER(NAME, ALIASES, date64), INNER(NAME, ALIASES, date32), INNER(NAME, ALIASES, timestamp)
 
 // Iterate the inner macro over all time types
 #define TIME_TYPES(INNER, NAME, ALIASES) INNER(NAME, ALIASES, time32)

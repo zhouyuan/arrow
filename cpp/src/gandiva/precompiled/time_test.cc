@@ -27,6 +27,8 @@ TEST(TestTime, TestCastDate) {
   ExecutionContext context;
   int64_t context_ptr = reinterpret_cast<int64_t>(&context);
 
+  EXPECT_EQ(castDATE32_utf8(context_ptr, "1969-12-31", 10), -1);
+  EXPECT_EQ(castDATE32_utf8(context_ptr, "1970-1-2", 8), 1);
   EXPECT_EQ(castDATE_utf8(context_ptr, "1967-12-1", 9), -65836800000);
   EXPECT_EQ(castDATE_utf8(context_ptr, "2067-12-1", 9), 3089923200000);
 

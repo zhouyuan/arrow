@@ -27,6 +27,7 @@ namespace gandiva {
 
 using arrow::boolean;
 using arrow::date64;
+using arrow::date32;
 using arrow::float32;
 using arrow::int32;
 using arrow::int64;
@@ -87,38 +88,36 @@ int64_t MillisSince(time_t base_line, int32_t yy, int32_t mm, int32_t dd, int32_
 }
 
 TEST_F(TestProjector, TestIsNull) {
-  auto d0 = field("d0", date64());
-  auto t0 = field("t0", time32(arrow::TimeUnit::MILLI));
-  auto schema = arrow::schema({d0, t0});
+  auto d0 = field("d0", date32());
+  auto d1 = field("d1", date32());
+  auto schema = arrow::schema({d0, d1});
 
   // output fields
-  auto b0 = field("isnull", boolean());
+  auto b0 = field("isbigger", boolean());
 
   // isnull and isnotnull
-  auto isnull_expr = TreeExprBuilder::MakeExpression("isnull", {d0}, b0);
-  auto isnotnull_expr = TreeExprBuilder::MakeExpression("isnotnull", {t0}, b0);
+  auto isbigger_expr = TreeExprBuilder::MakeExpression("greater_than", {d0, d1}, b0);
 
   std::shared_ptr<Projector> projector;
-  auto status = Projector::Make(schema, {isnull_expr, isnotnull_expr},
+  auto status = Projector::Make(schema, {isbigger_expr},
                                 TestConfiguration(), &projector);
   ASSERT_TRUE(status.ok());
 
   int num_records = 4;
-  std::vector<int64_t> d0_data = {0, 100, 0, 1000};
-  auto t0_data = {0, 100, 0, 1000};
-  auto validity = {false, true, false, true};
+  std::vector<int32_t> d0_data = {0, 100, 0, 1000};
+  std::vector<int32_t> d1_data = {1, 2, 3, 1000};
+  auto validity = {true, true, true, true};
   auto d0_array =
-      MakeArrowTypeArray<arrow::Date64Type, int64_t>(date64(), d0_data, validity);
-  auto t0_array = MakeArrowTypeArray<arrow::Time32Type, int32_t>(
-      time32(arrow::TimeUnit::MILLI), t0_data, validity);
+      MakeArrowTypeArray<arrow::Date32Type, int32_t>(date32(), d0_data, validity);
+  auto d1_array =
+      MakeArrowTypeArray<arrow::Date32Type, int32_t>(date32(), d1_data, validity);
 
   // expected output
   auto exp_isnull =
-      MakeArrowArrayBool({true, false, true, false}, {true, true, true, true});
-  auto exp_isnotnull = MakeArrowArrayBool(validity, {true, true, true, true});
+      MakeArrowArrayBool({false, true, false, false}, {true, true, true, true});
 
   // prepare input record batch
-  auto in_batch = arrow::RecordBatch::Make(schema, num_records, {d0_array, t0_array});
+  auto in_batch = arrow::RecordBatch::Make(schema, num_records, {d0_array, d1_array});
 
   // Evaluate expression
   arrow::ArrayVector outputs;
@@ -127,7 +126,6 @@ TEST_F(TestProjector, TestIsNull) {
 
   // Validate results
   EXPECT_ARROW_ARRAY_EQUALS(exp_isnull, outputs.at(0));
-  EXPECT_ARROW_ARRAY_EQUALS(exp_isnotnull, outputs.at(1));
 }
 
 TEST_F(TestProjector, TestDateTime) {

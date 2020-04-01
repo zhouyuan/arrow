@@ -22,6 +22,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.time.temporal.ChronoUnit;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.arrow.gandiva.exceptions.GandivaException;
@@ -282,6 +283,15 @@ class BaseEvaluatorTest {
     return buffer;
   }
 
+  ArrowBuf stringToDays(String[] dates) {
+    ArrowBuf buffer = allocator.buffer(dates.length * 8);
+    for (int i = 0; i < dates.length; i++) {
+      Instant instant = Instant.parse(dates[i]);
+      buffer.writeLong(ChronoUnit.DAYS.between(Instant.EPOCH, instant));
+    }
+
+    return buffer;
+  }
   ArrowBuf stringToDayInterval(String[] values) {
     ArrowBuf buffer = allocator.buffer(values.length * 8);
     for (int i = 0; i < values.length; i++) {

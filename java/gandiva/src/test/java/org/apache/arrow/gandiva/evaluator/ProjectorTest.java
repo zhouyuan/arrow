@@ -1335,6 +1335,87 @@ public class ProjectorTest extends BaseEvaluatorTest {
   }
 
   @Test
+  public void testDateTime2() throws GandivaException, Exception {
+    ArrowType date32 = new ArrowType.Date(DateUnit.DAY);
+
+    Field dateField = Field.nullable("date", date32);
+
+    TreeNode dateNode = TreeBuilder.makeField(dateField);
+
+
+    TreeNode literalNode = TreeBuilder.makeLiteral(1);
+    List<TreeNode> dateArgs = Lists.newArrayList(literalNode);
+    TreeNode intToDate = TreeBuilder.makeFunction("castDATE", dateArgs, date32);
+
+    List<TreeNode> dateArgs2 = Lists.newArrayList(dateNode, intToDate);
+    TreeNode dateToYear = TreeBuilder.makeFunction("greater_than", dateArgs2, boolType);
+
+    Field resultField = Field.nullable("result", new ArrowType.Bool());
+    List<ExpressionTree> exprs = Lists.newArrayList(TreeBuilder.makeExpression(dateToYear, resultField));
+
+    Schema schema = new Schema(Lists.newArrayList(dateField));
+    Projector eval = Projector.make(schema, exprs);
+
+    int numRows = 8;
+    byte[] validity = new byte[]{(byte) 255};
+    String[] values =
+        new String[]{
+            "2007-01-01T01:00:00.00Z",
+            "2007-03-05T03:40:00.00Z",
+            "2008-05-31T13:55:00.00Z",
+            "2000-06-30T23:20:00.00Z",
+            "2000-07-10T20:30:00.00Z",
+            "2000-08-20T00:14:00.00Z",
+            "2000-09-30T02:29:00.00Z",
+            "2000-10-31T05:33:00.00Z"
+        };
+    //long[] expYearFromDate = new long[]{2007, 2007, 2008, 2000, 2000, 2000, 2000, 2000};
+    boolean[] expYearFromDate = new boolean[]{true, true, true, true, false, false, false, false};
+
+    boolean[][] expValues =
+        new boolean[][]{
+            expYearFromDate };
+
+    ArrowBuf bufValidity = buf(validity);
+    ArrowBuf millisData = stringToDays(values);
+
+    ArrowFieldNode fieldNode = new ArrowFieldNode(numRows, 0);
+    ArrowRecordBatch batch =
+        new ArrowRecordBatch(
+            numRows,
+            Lists.newArrayList(fieldNode),
+            Lists.newArrayList(bufValidity, millisData));
+
+    List<ValueVector> output = new ArrayList<ValueVector>();
+    for (int i = 0; i < exprs.size(); i++) {
+      IntVector bigIntVector = new IntVector(EMPTY_SCHEMA_PATH, allocator);
+      bigIntVector.allocateNew(numRows);
+      output.add(bigIntVector);
+    }
+    eval.evaluate(batch, output);
+    eval.close();
+
+    boolean[] expected = expValues[0];
+    IntVector bigIntVector = (IntVector) output.get(0);
+    assertEquals(expected[0], bigIntVector.get(0));
+
+    //for (int i = 0; i < output.size(); i++) {
+    //  long[] expected = expValues[i % 5];
+    //  BigIntVector bigIntVector = (BigIntVector) output.get(i);
+
+    //  for (int j = 0; j < numRows; j++) {
+    //    assertFalse(bigIntVector.isNull(j));
+    //    assertEquals(expected[j], bigIntVector.get(j));
+    //  }
+    //}
+
+    releaseRecordBatch(batch);
+    releaseValueVectors(output);
+  }
+
+
+
+  @Test
   public void testDateTime() throws GandivaException, Exception {
     ArrowType date64 = new ArrowType.Date(DateUnit.MILLISECOND);
     // ArrowType time32 = new ArrowType.Time(TimeUnit.MILLISECOND, 32);

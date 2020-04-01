@@ -35,6 +35,7 @@ extern "C" {
 
 // Expand inner macros for all date/time types.
 #define DATE_TYPES(INNER, NAME, OP) \
+  INNER(NAME, date32, OP)           \
   INNER(NAME, date64, OP)           \
   INNER(NAME, timestamp, OP)        \
   INNER(NAME, time32, OP)

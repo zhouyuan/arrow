@@ -47,6 +47,14 @@ NodePtr TreeExprBuilder::MakeStringLiteral(const std::string& value) {
   return std::make_shared<LiteralNode>(arrow::utf8(), LiteralHolder(value), false);
 }
 
+NodePtr TreeExprBuilder::MakeDate32Literal(const int32_t value) {
+  return std::make_shared<LiteralNode>(arrow::date32(), LiteralHolder(value), false);
+}
+
+NodePtr TreeExprBuilder::MakeDate64Literal(const int64_t value) {
+  return std::make_shared<LiteralNode>(arrow::date64(), LiteralHolder(value), false);
+}
+
 NodePtr TreeExprBuilder::MakeBinaryLiteral(const std::string& value) {
   return std::make_shared<LiteralNode>(arrow::binary(), LiteralHolder(value), false);
 }

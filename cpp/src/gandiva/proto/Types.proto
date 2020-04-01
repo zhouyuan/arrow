@@ -129,6 +129,10 @@ message IntNode {
   optional int32 value = 1;
 }
 
+message DateNode {
+  optional int32 value = 1;
+}
+
 message FloatNode {
   optional float value = 1;
 }
@@ -172,6 +176,7 @@ message TreeNode {
   // literals
   optional NullNode nullNode = 11;
   optional IntNode intNode = 12;
+  optional DateNode dateNode = 20;
   optional FloatNode floatNode = 13;
   optional LongNode longNode = 14;
   optional BooleanNode booleanNode = 15;
