@@ -482,6 +482,7 @@ if("${ARROW_GENERATE_COVERAGE}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage -DCOVERAGE_BUILD")
 endif()
 
+
 # CMAKE_CXX_FLAGS now fully assembled
 message(STATUS "CMAKE_C_FLAGS: ${CMAKE_C_FLAGS}")
 message(STATUS "CMAKE_CXX_FLAGS: ${CMAKE_CXX_FLAGS}")
