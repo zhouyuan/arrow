@@ -156,7 +156,7 @@ else()
   set(Python3_FIND_FRAMEWORK "LAST")
 
   find_package(Python3)
-  set(PYTHON_EXECUTABLE ${Python3_EXECUTABLE})
+  set(PYTHON_EXECUTABLE /opt/pyenv/shims/python3)
 endif()
 
 if(ARROW_USE_CCACHE)
