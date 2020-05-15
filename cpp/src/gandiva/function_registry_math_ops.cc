@@ -74,6 +74,11 @@ std::vector<NativeFunction> GetMathOpsFunctionRegistry() {
       MATH_UNARY_OPS(cot, {}), MATH_UNARY_OPS(radians, {}), MATH_UNARY_OPS(degrees, {}),
       MATH_BINARY_SAFE(atan2, {}),
 
+      UNARY_SAFE_NULL_IF_NULL(abs, {}, int32, uint32),
+      UNARY_SAFE_NULL_IF_NULL(abs, {}, int64, uint64),
+      UNARY_SAFE_NULL_IF_NULL(abs, {}, float32, float32),
+      UNARY_SAFE_NULL_IF_NULL(abs, {}, float64, float64),
+
       // decimal functions
       UNARY_SAFE_NULL_IF_NULL(abs, {}, decimal128, decimal128),
       UNARY_SAFE_NULL_IF_NULL(ceil, {}, decimal128, decimal128),
