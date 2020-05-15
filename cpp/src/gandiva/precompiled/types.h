@@ -70,10 +70,30 @@ gdv_int64 extractHour_time32(gdv_int32 millis_in_day);
 gdv_int64 extractMinute_time32(gdv_int32 millis_in_day);
 gdv_int64 extractSecond_time32(gdv_int32 millis_in_day);
 
+gdv_boolean isNaN_float32(gdv_float32 val);
+gdv_boolean isNaN_float64(gdv_float64 val);
 gdv_int32 hash32(double val, gdv_int32 seed);
 gdv_int32 hash32_buf(const gdv_uint8* buf, int len, gdv_int32 seed);
 gdv_int64 hash64(double val, gdv_int64 seed);
 gdv_int64 hash64_buf(const gdv_uint8* buf, int len, gdv_int64 seed);
+gdv_int32 hash32_spark_boolean_int32(gdv_boolean val, gdv_boolean is_valid,
+                                     gdv_int32 seed, gdv_boolean seed_valid);
+gdv_int32 hash32_spark_int8_int32(gdv_int8 val, gdv_boolean is_valid, gdv_int32 seed,
+                                  gdv_boolean seed_valid);
+gdv_int32 hash32_spark_int16_int32(gdv_int16 val, gdv_boolean is_valid, gdv_int32 seed,
+                                   gdv_boolean seed_valid);
+gdv_int32 hash32_spark_int32_int32(gdv_int32 val, gdv_boolean is_valid, gdv_int32 seed,
+                                   gdv_boolean seed_valid);
+gdv_int32 hash32_spark_date32_int32(gdv_date32 val, gdv_boolean is_valid, gdv_int32 seed,
+                                    gdv_boolean seed_valid);
+gdv_int32 hash32_spark_float32_int32(gdv_float32 val, gdv_boolean is_valid,
+                                     gdv_int32 seed, gdv_boolean seed_valid);
+gdv_int32 hash64_spark_int64_int32(gdv_int64 val, gdv_boolean is_valid, gdv_int32 seed,
+                                   gdv_boolean seed_valid);
+gdv_int32 hash64_spark_float64_int32(gdv_float64 val, gdv_boolean is_valid,
+                                     gdv_int32 seed, gdv_boolean seed_valid);
+gdv_int32 hashbuf_spark_utf8_int32(const gdv_uint8* buf, int len, gdv_boolean is_valid,
+                                   gdv_int32 seed, gdv_boolean seed_valid);
 
 gdv_int64 timestampaddSecond_int32_timestamp(gdv_int32, gdv_timestamp);
 gdv_int64 timestampaddMinute_int32_timestamp(gdv_int32, gdv_timestamp);
@@ -214,6 +234,9 @@ gdv_float64 degrees_int64(gdv_int64);
 gdv_float64 degrees_float32(gdv_float32);
 gdv_float64 degrees_float64(gdv_float64);
 
+gdv_float64 round_float64_int32(gdv_float64 in1, gdv_int32 in2);
+gdv_float64 round_float64_int64(gdv_float64 in1, gdv_int64 in2);
+
 gdv_int32 bitwise_and_int32_int32(gdv_int32 in1, gdv_int32 in2);
 gdv_int64 bitwise_and_int64_int64(gdv_int64 in1, gdv_int64 in2);
 gdv_int32 bitwise_or_int32_int32(gdv_int32 in1, gdv_int32 in2);
@@ -258,6 +281,20 @@ gdv_date64 castDATE_timestamp(gdv_timestamp);
 gdv_time32 castTIME_timestamp(gdv_timestamp timestamp_in_millis);
 const char* castVARCHAR_timestamp_int64(int64_t, gdv_timestamp, gdv_int64, gdv_int32*);
 gdv_date64 last_day_from_timestamp(gdv_date64 millis);
+
+const char* castVARCHAR_date32_int64(int64_t, gdv_date32, gdv_int64, gdv_int32*);
+
+const char* castVARCHAR_int8_int64(int64_t, gdv_int8, gdv_int64, gdv_int32*);
+
+const char* castVARCHAR_int16_int64(int64_t, gdv_int16, gdv_int64, gdv_int32*);
+
+const char* castVARCHAR_int32_int64(int64_t, gdv_int32, gdv_int64, gdv_int32*);
+
+const char* castVARCHAR_int64_int64(int64_t, gdv_int64, gdv_int64, gdv_int32*);
+
+const char* castVARCHAR_float32_int64(int64_t, gdv_float32, gdv_int64, gdv_int32*);
+
+const char* castVARCHAR_float64_int64(int64_t, gdv_float64, gdv_int64, gdv_int32*);
 
 gdv_int64 truncate_int64_int32(gdv_int64 in, gdv_int32 out_scale);
 
