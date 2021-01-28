@@ -57,6 +57,7 @@ ARROW_UTF8PROC_BUILD_VERSION=v2.6.1
 ARROW_XSIMD_BUILD_VERSION=e9234cd6e6f4428fc260073b2c34ffe86fda1f34
 ARROW_ZLIB_BUILD_VERSION=1.2.11
 ARROW_ZSTD_BUILD_VERSION=v1.4.8
+ARROW_FASTPFOR_BUILD_VERSION=b75f8053d8839a866ff44dce9f5204582417cfd8
 
 # The first field is the name of the environment variable expected by cmake.
 # This _must_ match what is defined. The second field is the name of the
