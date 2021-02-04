@@ -234,9 +234,6 @@ gdv_float64 degrees_int64(gdv_int64);
 gdv_float64 degrees_float32(gdv_float32);
 gdv_float64 degrees_float64(gdv_float64);
 
-gdv_float64 round_float64_int32(gdv_float64 in1, gdv_int32 in2);
-gdv_float64 round_float64_int64(gdv_float64 in1, gdv_int64 in2);
-
 gdv_int32 bitwise_and_int32_int32(gdv_int32 in1, gdv_int32 in2);
 gdv_int64 bitwise_and_int64_int64(gdv_int64 in1, gdv_int64 in2);
 gdv_int32 bitwise_or_int32_int32(gdv_int32 in1, gdv_int32 in2);

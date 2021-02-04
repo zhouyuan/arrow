@@ -26,7 +26,6 @@ extern "C" {
 
 #include <math.h>
 #include <stdio.h>
-#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include "./types.h"
@@ -95,23 +94,6 @@ ABS_TYPES_UNARY(int32, uint32)
 ABS_TYPES_UNARY(int64, uint64)
 ABS_FTYPES_UNARY(float32, float32)
 ABS_FTYPES_UNARY(float64, float64)
-
-// round
-#define ROUND_TYPES_UNARY(IN_TYPE1, IN_TYPE2, OUT_TYPE)                                 \
-  FORCE_INLINE                                                                          \
-  gdv_##OUT_TYPE round_##IN_TYPE1##_##IN_TYPE2(gdv_##IN_TYPE1 val, gdv_##IN_TYPE2 dp) { \
-    int charsNeeded = 1 + snprintf(NULL, 0, "%.*f", (int) dp, val);                     \
-    char* buffer = reinterpret_cast<char*>(malloc(charsNeeded));                        \
-    snprintf(buffer, charsNeeded, "%.*f", (int) dp, nextafter(val, val*2));             \
-    double result = atof(buffer);                                                       \
-    free(buffer);                                                                       \
-    return static_cast<gdv_##OUT_TYPE>(result);                                         \
-  }
-
-ROUND_TYPES_UNARY(float64, int32, float64)
-ROUND_TYPES_UNARY(float64, int64, float64)
-
-#undef ROUND_TYPES_UNARY
 
 FORCE_INLINE
 void set_error_for_logbase(int64_t execution_context, double base) {
