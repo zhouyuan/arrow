@@ -37,7 +37,7 @@ public class SingleFileDatasetFactory extends NativeDatasetFactory {
   }
 
   private static long createNative(FileFormat format, FileSystem fs, String path, long startOffset, long length) {
-    return JniWrapper.get().makeSingleFileDatasetFactory(fs.protocal() + "://" + path,
+    return JniWrapper.get().makeSingleFileDatasetFactory(path,
         format.id(), startOffset, length);
   }
 
