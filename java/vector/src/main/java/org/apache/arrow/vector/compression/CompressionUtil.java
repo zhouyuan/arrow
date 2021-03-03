@@ -100,4 +100,33 @@ public class CompressionUtil {
     return inputBuffer.slice(SIZE_OF_UNCOMPRESSED_LENGTH,
         inputBuffer.writerIndex() - SIZE_OF_UNCOMPRESSED_LENGTH);
   }
+
+  public static CompressionCodec createCodec(byte compressionType) {
+    switch (compressionType) {
+      case NoCompressionCodec.COMPRESSION_TYPE:
+        return NoCompressionCodec.INSTANCE;
+      case CompressionType.LZ4_FRAME:
+        return new Lz4CompressionCodec();
+      default:
+        throw new IllegalArgumentException("Compression type not supported: " + compressionType);
+    }
+  }
+  /**
+   * Process compression by compressing the buffer as is.
+   */
+  public static ArrowBuf compressRawBuffer(BufferAllocator allocator, ArrowBuf inputBuffer) {
+    ArrowBuf compressedBuffer = allocator.buffer(SIZE_OF_UNCOMPRESSED_LENGTH + inputBuffer.writerIndex());
+    compressedBuffer.setLong(0, NO_COMPRESSION_LENGTH);
+    compressedBuffer.setBytes(SIZE_OF_UNCOMPRESSED_LENGTH, inputBuffer, 0, inputBuffer.writerIndex());
+    compressedBuffer.writerIndex(SIZE_OF_UNCOMPRESSED_LENGTH + inputBuffer.writerIndex());
+    return compressedBuffer;
+  }
+
+  /**
+   * Process decompression by decompressing the buffer as is.
+   */
+  public static ArrowBuf decompressRawBuffer(ArrowBuf inputBuffer) {
+    return inputBuffer.slice(SIZE_OF_UNCOMPRESSED_LENGTH,
+        inputBuffer.writerIndex() - SIZE_OF_UNCOMPRESSED_LENGTH);
+  }
 }

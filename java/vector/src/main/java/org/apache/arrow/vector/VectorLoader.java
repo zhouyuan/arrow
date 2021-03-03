@@ -76,12 +76,9 @@ public class VectorLoader {
   public void load(ArrowRecordBatch recordBatch) {
     Iterator<ArrowBuf> buffers = recordBatch.getBuffers().iterator();
     Iterator<ArrowFieldNode> nodes = recordBatch.getNodes().iterator();
-    CompressionUtil.CodecType codecType =
-        CompressionUtil.CodecType.fromCompressionType(recordBatch.getBodyCompression().getCodec());
-    decompressionNeeded = codecType != CompressionUtil.CodecType.NO_COMPRESSION;
-    CompressionCodec codec = decompressionNeeded ? factory.createCodec(codecType) : NoCompressionCodec.INSTANCE;
+
     for (FieldVector fieldVector : root.getFieldVectors()) {
-      loadBuffers(fieldVector, fieldVector.getField(), buffers, nodes, codec);
+      loadBuffers(fieldVector, fieldVector.getField(), buffers, nodes);
     }
     root.setRowCount(recordBatch.getLength());
     if (nodes.hasNext() || buffers.hasNext()) {
@@ -94,8 +91,7 @@ public class VectorLoader {
       FieldVector vector,
       Field field,
       Iterator<ArrowBuf> buffers,
-      Iterator<ArrowFieldNode> nodes,
-      CompressionCodec codec) {
+      Iterator<ArrowFieldNode> nodes) {
     checkArgument(nodes.hasNext(), "no more field nodes for for field %s and vector %s", field, vector);
     ArrowFieldNode fieldNode = nodes.next();
     int bufferLayoutCount = TypeLayout.getTypeBufferCount(field.getType());
@@ -103,8 +99,7 @@ public class VectorLoader {
     for (int j = 0; j < bufferLayoutCount; j++) {
       ArrowBuf nextBuf = buffers.next();
       // for vectors without nulls, the buffer is empty, so there is no need to decompress it.
-      ArrowBuf bufferToAdd = nextBuf.writerIndex() > 0 ? codec.decompress(vector.getAllocator(), nextBuf) : nextBuf;
-      ownBuffers.add(bufferToAdd);
+      ownBuffers.add(nextBuf);
       if (decompressionNeeded) {
         // decompression performed
         nextBuf.getReferenceManager().retain();
@@ -130,7 +125,7 @@ public class VectorLoader {
       for (int i = 0; i < childrenFromFields.size(); i++) {
         Field child = children.get(i);
         FieldVector fieldVector = childrenFromFields.get(i);
-        loadBuffers(fieldVector, child, buffers, nodes, codec);
+        loadBuffers(fieldVector, child, buffers, nodes);
       }
     }
   }
