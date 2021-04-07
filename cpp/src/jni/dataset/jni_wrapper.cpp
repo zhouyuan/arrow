@@ -196,6 +196,8 @@ std::shared_ptr<arrow::dataset::FileFormat> GetFileFormat(JNIEnv *env, jint id) 
   switch (id) {
     case 0:
       return std::make_shared<arrow::dataset::ParquetFileFormat>();
+    case 1:
+      return std::make_shared<arrow::dataset::CsvFileFormat>();
     default:
       std::string error_message = "illegal file format id: " + std::to_string(id);
       env->ThrowNew(illegal_argument_exception_class, error_message.c_str());

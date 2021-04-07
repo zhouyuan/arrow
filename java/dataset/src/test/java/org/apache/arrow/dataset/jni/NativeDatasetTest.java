@@ -39,17 +39,26 @@ import org.apache.arrow.dataset.source.Dataset;
 import org.apache.arrow.dataset.source.DatasetFactory;
 import org.apache.arrow.memory.ReservationListener;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.dictionary.Dictionary;
+import org.apache.arrow.vector.ipc.message.ArrowRecordBatch;
+import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
 
+import static org.junit.Assert.assertEquals;
+
 public class NativeDatasetTest {
 
   private String sampleParquetLocal() {
-    return "file://" + NativeDatasetTest.class.getResource(File.separator + "userdata1.parquet").getPath();
+    return "file://" + resourcePath("userdata1.parquet");
+  }
+
+  private String resourcePath(String resource) {
+    return NativeDatasetTest.class.getResource(File.separator + resource).getPath();
   }
 
   private void testDatasetFactoryEndToEnd(DatasetFactory factory, int taskCount, int vectorCount, int rowCount) {
@@ -313,6 +322,42 @@ public class NativeDatasetTest {
     }
     Assert.assertEquals(1, rowCount);
 
+    if (vsr != null) {
+      vsr.close();
+    }
+    allocator.close();
+  }
+
+  @Test
+  public void testCsvRead() throws Exception {
+    RootAllocator allocator = new RootAllocator(Long.MAX_VALUE);
+    SingleFileDatasetFactory factory = new SingleFileDatasetFactory(allocator,
+        NativeMemoryPool.getDefault(), FileFormat.CSV, "file://" + resourcePath("data/people.csv"));
+    ScanOptions options = new ScanOptions(new String[]{}, Filter.EMPTY, 100);
+    Schema schema = factory.inspect();
+    NativeDataset dataset = factory.finish(schema);
+    NativeScanner nativeScanner = dataset.newScan(options);
+    List<? extends ScanTask> scanTasks = collect(nativeScanner.scan());
+    Assert.assertEquals(1, scanTasks.size());
+    ScanTask scanTask = scanTasks.get(0);
+    ScanTask.Itr itr = scanTask.scan();
+
+    VectorSchemaRoot vsr = null;
+    int rowCount = 0;
+    while (itr.hasNext()) {
+      // FIXME VectorSchemaRoot is not actually something ITERABLE. Using a reader convention instead.
+      vsr = itr.next().valueVectors;
+      rowCount += vsr.getRowCount();
+
+      // check if projector is applied
+      Assert.assertEquals("Schema<name: Utf8, age: Int(64, true), job: Utf8>",
+          vsr.getSchema().toString());
+    }
+    Assert.assertEquals(2, rowCount);
+    assertEquals(3, schema.getFields().size());
+    assertEquals("name", schema.getFields().get(0).getName());
+    assertEquals("age", schema.getFields().get(1).getName());
+    assertEquals("job", schema.getFields().get(2).getName());
     if (vsr != null) {
       vsr.close();
     }
