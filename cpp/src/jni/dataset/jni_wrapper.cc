@@ -24,6 +24,7 @@
 #include "arrow/ipc/api.h"
 #include "arrow/util/iterator.h"
 
+#include "jni/dataset/DTypes.pb.h"
 #include "jni/dataset/jni_util.h"
 
 #include "org_apache_arrow_dataset_file_JniWrapper.h"
@@ -145,7 +146,7 @@ class DisposableScannerAdaptor {
 
   static arrow::Result<std::shared_ptr<DisposableScannerAdaptor>> Create(
       std::shared_ptr<arrow::dataset::Scanner> scanner) {
-    ARROW_ASSIGN_OR_RAISE(auto batch_itr, scanner->ScanBatches())
+    ARROW_ASSIGN_OR_RAISE(auto batch_itr, scanner->ScanBatchesWithWeakFilter())
     return std::make_shared<DisposableScannerAdaptor>(scanner, std::move(batch_itr));
   }
 
@@ -166,6 +167,88 @@ class DisposableScannerAdaptor {
   }
 };
 
+bool ParseProtobuf(uint8_t* buf, int bufLen, google::protobuf::Message* msg) {
+  google::protobuf::io::CodedInputStream cis(buf, bufLen);
+  cis.SetRecursionLimit(1000);
+  return msg->ParseFromCodedStream(&cis);
+}
+
+void releaseFilterInput(jbyteArray condition_arr, jbyte* condition_bytes, JNIEnv* env) {
+  env->ReleaseByteArrayElements(condition_arr, condition_bytes, JNI_ABORT);
+}
+
+// fixme in development. Not all node types considered.
+arrow::dataset::Expression translateNode(arrow::dataset::types::TreeNode node, JNIEnv* env) {
+  if (node.has_fieldnode()) {
+    const arrow::dataset::types::FieldNode& f_node = node.fieldnode();
+    const std::string& name = f_node.name();
+    return arrow::dataset::field_ref(name);
+  }
+  if (node.has_intnode()) {
+    const arrow::dataset::types::IntNode& int_node = node.intnode();
+    int32_t val = int_node.value();
+    return arrow::dataset::literal(val);
+  }
+  if (node.has_longnode()) {
+    const arrow::dataset::types::LongNode& long_node = node.longnode();
+    int64_t val = long_node.value();
+    return arrow::dataset::literal(val);
+  }
+  if (node.has_floatnode()) {
+    const arrow::dataset::types::FloatNode& float_node = node.floatnode();
+    float val = float_node.value();
+    return arrow::dataset::literal(val);
+  }
+  if (node.has_doublenode()) {
+    const arrow::dataset::types::DoubleNode& double_node = node.doublenode();
+    double val = double_node.value();
+    return arrow::dataset::literal(std::make_shared<arrow::DoubleScalar>(val));
+  }
+  if (node.has_booleannode()) {
+    const arrow::dataset::types::BooleanNode& boolean_node = node.booleannode();
+    bool val = boolean_node.value();
+    return arrow::dataset::literal(val);
+  }
+  if (node.has_andnode()) {
+    const arrow::dataset::types::AndNode& and_node = node.andnode();
+    const arrow::dataset::types::TreeNode& left_arg = and_node.leftarg();
+    const arrow::dataset::types::TreeNode& right_arg = and_node.rightarg();
+    return arrow::dataset::and_(translateNode(left_arg, env), translateNode(right_arg, env));
+  }
+  if (node.has_ornode()) {
+    const arrow::dataset::types::OrNode& or_node = node.ornode();
+    const arrow::dataset::types::TreeNode& left_arg = or_node.leftarg();
+    const arrow::dataset::types::TreeNode& right_arg = or_node.rightarg();
+    return arrow::dataset::or_(translateNode(left_arg, env), translateNode(right_arg, env));
+  }
+  if (node.has_cpnode()) {
+    const arrow::dataset::types::ComparisonNode& cp_node = node.cpnode();
+    const std::string& op_name = cp_node.opname();
+    const arrow::dataset::types::TreeNode& left_arg = cp_node.leftarg();
+    const arrow::dataset::types::TreeNode& right_arg = cp_node.rightarg();
+    return arrow::dataset::call(op_name,
+                                {translateNode(left_arg, env), translateNode(right_arg, env)});
+  }
+  if (node.has_notnode()) {
+    const arrow::dataset::types::NotNode& not_node = node.notnode();
+    const ::arrow::dataset::types::TreeNode& child = not_node.args();
+    arrow::dataset::Expression translatedChild = translateNode(child, env);
+    return arrow::dataset::not_(translatedChild);
+  }
+  if (node.has_isvalidnode()) {
+    const arrow::dataset::types::IsValidNode& is_valid_node = node.isvalidnode();
+    const ::arrow::dataset::types::TreeNode& child = is_valid_node.args();
+    arrow::dataset::Expression translatedChild = translateNode(child, env);
+    return arrow::dataset::call("is_valid", {translatedChild});
+  }
+  JniThrow("Unknown node type");
+  return arrow::dataset::literal(false); // unreachable
+}
+
+arrow::dataset::Expression translateFilter(arrow::dataset::types::Condition condition, JNIEnv* env) {
+  const arrow::dataset::types::TreeNode& tree_node = condition.root();
+  return translateNode(tree_node, env);
+}
 }  // namespace
 
 using arrow::dataset::jni::CreateGlobalClassReference;
@@ -395,10 +478,10 @@ JNIEXPORT void JNICALL Java_org_apache_arrow_dataset_jni_JniWrapper_closeDataset
 /*
  * Class:     org_apache_arrow_dataset_jni_JniWrapper
  * Method:    createScanner
- * Signature: (J[Ljava/lang/String;JJ)J
+ * Signature: (J[Ljava/lang/String;[BJJ)J
  */
 JNIEXPORT jlong JNICALL Java_org_apache_arrow_dataset_jni_JniWrapper_createScanner(
-    JNIEnv* env, jobject, jlong dataset_id, jobjectArray columns, jlong batch_size,
+    JNIEnv* env, jobject, jlong dataset_id, jobjectArray columns, jbyteArray filter, jlong batch_size,
     jlong memory_pool_id) {
   JNI_METHOD_START
   arrow::MemoryPool* pool = reinterpret_cast<arrow::MemoryPool*>(memory_pool_id);
@@ -416,6 +499,18 @@ JNIEXPORT jlong JNICALL Java_org_apache_arrow_dataset_jni_JniWrapper_createScann
     JniAssertOkOrThrow(scanner_builder->Project(column_vector));
   }
   JniAssertOkOrThrow(scanner_builder->BatchSize(batch_size));
+  // initialize filters
+  jsize exprs_len = env->GetArrayLength(filter);
+  jbyte* exprs_bytes = env->GetByteArrayElements(filter, 0);
+  arrow::dataset::types::Condition condition;
+  if (!ParseProtobuf(reinterpret_cast<uint8_t*>(exprs_bytes), exprs_len, &condition)) {
+    releaseFilterInput(filter, exprs_bytes, env);
+    std::string error_message = "bad protobuf message";
+    env->ThrowNew(illegal_argument_exception_class, error_message.c_str());
+  }
+  if (condition.has_root()) {
+    JniAssertOkOrThrow(scanner_builder->Filter(translateFilter(condition, env)));
+  }
 
   auto scanner = JniGetOrThrow(scanner_builder->Finish());
   std::shared_ptr<DisposableScannerAdaptor> scanner_adaptor =

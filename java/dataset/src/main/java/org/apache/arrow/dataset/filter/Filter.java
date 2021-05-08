@@ -15,38 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.dataset.scanner;
+package org.apache.arrow.dataset.filter;
 
-import org.apache.arrow.dataset.filter.Filter;
+// todo filter tree implementation
+// todo see also https://issues.apache.org/jira/browse/ARROW-6953
 
 /**
- * Options used during scanning.
+ * Datasets filter.
  */
-public class ScanOptions {
-  private final String[] columns;
-  private final Filter filter;
-  private final long batchSize;
+public interface Filter {
 
-  /**
-   * Constructor.
-   * @param columns Projected columns. Empty for scanning all columns.
-   * @param batchSize Maximum row number of each returned {@link org.apache.arrow.vector.ipc.message.ArrowRecordBatch}
-   */
-  public ScanOptions(String[] columns, Filter filter, long batchSize) {
-    this.columns = columns;
-    this.filter = filter;
-    this.batchSize = batchSize;
-  }
+  Filter EMPTY = new Filter() {
+    @Override
+    public byte[] toByteArray() {
+      return new byte[0];
+    }
+  };
 
-  public String[] getColumns() {
-    return columns;
-  }
+  byte[] toByteArray();
 
-  public Filter getFilter() {
-    return filter;
-  }
-
-  public long getBatchSize() {
-    return batchSize;
-  }
 }

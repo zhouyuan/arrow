@@ -15,38 +15,24 @@
  * limitations under the License.
  */
 
-package org.apache.arrow.dataset.scanner;
+package org.apache.arrow.dataset.filter;
 
-import org.apache.arrow.dataset.filter.Filter;
+import org.apache.arrow.dataset.DatasetTypes;
 
 /**
- * Options used during scanning.
+ * Provided implementation of {@link Filter}.
+ *
+ * @see org.apache.arrow.dataset.DatasetTypes
  */
-public class ScanOptions {
-  private final String[] columns;
-  private final Filter filter;
-  private final long batchSize;
+public class FilterImpl implements Filter {
+  private final DatasetTypes.Condition condition;
 
-  /**
-   * Constructor.
-   * @param columns Projected columns. Empty for scanning all columns.
-   * @param batchSize Maximum row number of each returned {@link org.apache.arrow.vector.ipc.message.ArrowRecordBatch}
-   */
-  public ScanOptions(String[] columns, Filter filter, long batchSize) {
-    this.columns = columns;
-    this.filter = filter;
-    this.batchSize = batchSize;
+  public FilterImpl(DatasetTypes.Condition condition) {
+    this.condition = condition;
   }
 
-  public String[] getColumns() {
-    return columns;
-  }
-
-  public Filter getFilter() {
-    return filter;
-  }
-
-  public long getBatchSize() {
-    return batchSize;
+  @Override
+  public byte[] toByteArray() {
+    return condition.toByteArray();
   }
 }

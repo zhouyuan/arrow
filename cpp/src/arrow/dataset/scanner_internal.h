@@ -113,6 +113,24 @@ class FilterAndProjectScanTask : public ScanTask {
   Expression partition_;
 };
 
+class ProjectScanTask : public ScanTask {
+ public:
+  explicit ProjectScanTask(std::shared_ptr<ScanTask> task, Expression partition)
+      : ScanTask(task->options(), task->fragment()), task_(std::move(task)),
+        partition_(std::move(partition)) {}
+
+  Result<RecordBatchIterator> Execute() override {
+    ARROW_ASSIGN_OR_RAISE(Expression simplified_projection,
+                          SimplifyWithGuarantee(options()->projection, partition_));
+    ARROW_ASSIGN_OR_RAISE(auto it, task_->Execute());
+    return ProjectRecordBatch(std::move(it), simplified_projection, options_->pool);
+  }
+
+ private:
+  std::shared_ptr<ScanTask> task_;
+  Expression partition_;
+};
+
 /// \brief GetScanTaskIterator transforms an Iterator<Fragment> in a
 /// flattened Iterator<ScanTask>.
 inline Result<ScanTaskIterator> GetScanTaskIterator(
