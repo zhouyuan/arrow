@@ -287,7 +287,7 @@ Java_org_apache_arrow_dataset_jni_NativeMemoryPool_createListenableMemoryPool(
   std::shared_ptr<ReservationListener> listener =
       std::make_shared<ReserveFromJava>(vm, jlistener_ref);
   auto memory_pool =
-      new ReservationListenableMemoryPool(arrow::default_memory_pool(), listener);
+      new ReservationListenableMemoryPool(arrow::default_memory_pool(), listener, 8 * 1024 * 1024);
   return reinterpret_cast<jlong>(memory_pool);
   JNI_METHOD_END(-1L)
 }
