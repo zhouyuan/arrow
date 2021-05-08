@@ -40,6 +40,8 @@ import org.apache.arrow.dataset.jni.NativeScanner;
 import org.apache.arrow.dataset.jni.TestNativeDataset;
 import org.apache.arrow.dataset.scanner.ScanOptions;
 import org.apache.arrow.dataset.scanner.ScanTask;
+import org.apache.arrow.dataset.source.DatasetFactory;
+import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.FieldVector;
 import org.apache.arrow.vector.VectorLoader;
@@ -82,6 +84,29 @@ public class TestFileSystemDataset extends TestNativeDataset {
     checkParquetReadResult(schema, writeSupport.getWrittenRecords(), datum);
 
     AutoCloseables.close(datum);
+  }
+
+  @Test
+  public void testReadPartialFile() throws Exception {
+    ParquetWriteSupport writeSupport = ParquetWriteSupport.writeTempFile(AVRO_SCHEMA_USER, TMP.newFolder(), 1, "a");
+    ScanOptions options = new ScanOptions(new String[0], Filter.EMPTY, 100);
+
+    FileSystemDatasetFactory factory1 = new FileSystemDatasetFactory(rootAllocator(), NativeMemoryPool.getDefault(),
+            FileFormat.PARQUET, writeSupport.getOutputURI(), 0, 0);
+    List<ArrowRecordBatch> datum1 = collectResultFromFactory(factory1, options);
+    assertEquals(0, datum1.size());
+
+    FileSystemDatasetFactory factory2 = new FileSystemDatasetFactory(rootAllocator(), NativeMemoryPool.getDefault(),
+            FileFormat.PARQUET, writeSupport.getOutputURI(), 0, 100000);
+    List<ArrowRecordBatch> datum2 = collectResultFromFactory(factory2, options);
+    assertEquals(1, datum2.size());
+
+    FileSystemDatasetFactory factory3 = new FileSystemDatasetFactory(rootAllocator(), NativeMemoryPool.getDefault(),
+            FileFormat.PARQUET, writeSupport.getOutputURI(), 100000, 100000);
+    List<ArrowRecordBatch> datum3 = collectResultFromFactory(factory3, options);
+    assertEquals(0, datum3.size());
+
+    AutoCloseables.close(datum1, datum2, datum3);
   }
 
   @Test

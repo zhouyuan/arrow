@@ -342,24 +342,26 @@ Result<ScanTaskIterator> ParquetFileFormat::ScanFile(
     ARROW_ASSIGN_OR_RAISE(row_groups, parquet_fragment->FilterRowGroups(options->filter));
 
     pre_filtered = true;
-    if (row_groups.empty()) MakeEmpty();
+    if (row_groups.empty()) return MakeEmpty();
   }
 
   // Open the reader and pay the real IO cost.
-  ARROW_ASSIGN_OR_RAISE(std::shared_ptr<parquet::arrow::FileReader> reader,
+
+  FileSource source = fragment->source();
+  ARROW_ASSIGN_OR_RAISE(std::shared_ptr<parquet::arrow::FileReader> file_reader,
                         GetReader(fragment->source(), options.get()));
 
   // Ensure that parquet_fragment has FileMetaData
-  RETURN_NOT_OK(parquet_fragment->EnsureCompleteMetadata(reader.get()));
+  RETURN_NOT_OK(parquet_fragment->EnsureCompleteMetadata(file_reader.get()));
 
   if (!pre_filtered) {
     // row groups were not already filtered; do this now
     ARROW_ASSIGN_OR_RAISE(row_groups, parquet_fragment->FilterRowGroups(options->filter));
 
-    if (row_groups.empty()) MakeEmpty();
+    if (row_groups.empty()) return MakeEmpty();
   }
 
-  auto column_projection = InferColumnProjection(*reader, *options);
+  auto column_projection = InferColumnProjection(*file_reader, *options);
   ScanTaskVector tasks(row_groups.size());
 
   ARROW_ASSIGN_OR_RAISE(
@@ -373,7 +375,7 @@ Result<ScanTaskIterator> ParquetFileFormat::ScanFile(
 
   for (size_t i = 0; i < row_groups.size(); ++i) {
     tasks[i] = std::make_shared<ParquetScanTask>(
-        row_groups[i], column_projection, reader, pre_buffer_once, row_groups,
+        row_groups[i], column_projection, file_reader, pre_buffer_once, row_groups,
         parquet_scan_options->arrow_reader_properties->io_context(),
         parquet_scan_options->arrow_reader_properties->cache_options(), options,
         fragment);
@@ -476,8 +478,39 @@ Status ParquetFileFragment::EnsureCompleteMetadata(parquet::arrow::FileReader* r
   }
   physical_schema_ = std::move(schema);
 
+  auto parquet_reader = reader->parquet_reader();
+
   if (!row_groups_) {
-    row_groups_ = internal::Iota(reader->num_row_groups());
+    auto all_row_groups = internal::Iota(reader->num_row_groups());
+    FileSource source = this->source();
+    if (source.start_offset() == -1L) {
+      row_groups_ = all_row_groups;
+    } else {
+      // random read
+      std::vector<int> random_read_selected_row_groups = std::vector<int>();
+      for (int i : all_row_groups) {
+        std::shared_ptr<parquet::ColumnChunkMetaData> leading_cc =
+            parquet_reader->RowGroup(i)->metadata()->ColumnChunk(0);
+        int64_t r_start = leading_cc->data_page_offset();
+        if (leading_cc->has_dictionary_page() &&
+            r_start > leading_cc->dictionary_page_offset()) {
+          r_start = leading_cc->dictionary_page_offset();
+        }
+        int64_t r_bytes = 0L;
+        for (int col_id = 0; col_id < parquet_reader->RowGroup(i)
+            ->metadata()->num_columns();
+             col_id++) {
+          r_bytes += parquet_reader->
+              RowGroup(i)->metadata()->ColumnChunk(col_id)->total_compressed_size();
+        }
+        int64_t midpoint = r_start + r_bytes / 2;
+        if (midpoint >= source.start_offset()
+            && midpoint < (source.start_offset() + source.length())) {
+          random_read_selected_row_groups.push_back(i);
+        }
+      }
+      row_groups_ = random_read_selected_row_groups;
+    }
   }
 
   ARROW_ASSIGN_OR_RAISE(
