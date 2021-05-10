@@ -35,7 +35,7 @@ public class NativeUnderlyingMemory extends AllocationManager {
    * @param size Size of underlying memory (in bytes)
    * @param nativeInstanceId ID of the native instance
    */
-  NativeUnderlyingMemory(BufferAllocator accountingAllocator, int size, long nativeInstanceId, long address) {
+  public NativeUnderlyingMemory(BufferAllocator accountingAllocator, int size, long nativeInstanceId, long address) {
     super(accountingAllocator);
     this.size = size;
     this.nativeInstanceId = nativeInstanceId;
